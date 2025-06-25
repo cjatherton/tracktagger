@@ -412,11 +412,12 @@ def process(info, out_dir, track_map, cover_map, disc_padding, track_padding):
 def add_replaygain_one(args):
     """Add ReplayGain tags to an album with paths."""
     album, paths = args
+    if album is not None:
+        album_str = f"\"{album}\""
+    else:
+        album_str = "unknown album"
     if len(paths) > 0:
-        if album is not None:
-            print(f"Adding ReplayGain tags to \"{album}\" ...")
-        else:
-            print("Adding ReplayGain tags to unknown album ...")
+        print(f"Adding ReplayGain tags to {album_str} ...")
         try:
             subprocess.run(
                 ["metaflac", "--add-replay-gain"] + paths,
@@ -425,11 +426,9 @@ def add_replaygain_one(args):
                 check=True
             )
         except subprocess.CalledProcessError:
-            print(f"ERROR: Problem adding ReplayGain tags to \"{album}\"!", file=sys.stderr)
-    elif album is not None:
-        print(f"WARNING: No files in \"{album}\" to add ReplayGain tags to!")
+            print(f"ERROR: Problem adding ReplayGain tags to {album_str}!", file=sys.stderr)
     else:
-        print("WARNING: No files in unknown album to add ReplayGain tags to!")
+        print(f"WARNING: No files in {album_str} to add ReplayGain tags to!")
 
 def add_replaygain(albums):
     """Add ReplayGain tags to group of albums."""
