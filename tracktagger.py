@@ -458,12 +458,14 @@ def parse_cli(args=None):
         help="trackinfo file containing new tags")
     parser.add_argument("-o", "--output-dir", default=Path.cwd(), type=Path,
         help="location to place result")
+    parser.add_argument("-g", "--add-replaygain", action="store_true",
+        help="add ReplayGain tag information to output")
     cli = parser.parse_args(args)
-    return (cli.trackinfo.resolve(), cli.output_dir.resolve())
+    return (cli.trackinfo.resolve(), cli.output_dir.resolve(), cli.add_replaygain)
 
 def main(argv=None):
     """Main routine."""
-    trackinfo_path, out_dir = parse_cli(argv[1:] if argv is not None else None)
+    trackinfo_path, out_dir, replaygain_flag = parse_cli(argv[1:] if argv is not None else None)
 
     with tempfile.TemporaryDirectory(prefix="tracktagger-") as work_dir:
         work_path = Path(work_dir)
@@ -479,7 +481,8 @@ def main(argv=None):
         print("Compressing ...")
         make_album_dirs(out_dir, info)
         albums = process(info, out_dir, track_map, cover_map, disc_padding, track_padding)
-        add_replaygain(albums)
+        if replaygain_flag:
+            add_replaygain(albums)
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
