@@ -23,17 +23,18 @@
 
 """Read specially formatted 'trackinfo' files and apply contained tag information."""
 
-import re
-import sys
-import math
-from pathlib import Path
-import tempfile
-import subprocess
-import zipfile
-from multiprocessing import Pool
 import argparse
+import math
+from multiprocessing import Pool
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import zipfile
 
-ARCHIVE_EXTS = (".zip", ".rar", ".7z")
+ARCHIVE_EXTS = (".zip", ".rar", ".7z", ".tar")
 
 UNKNOWN_ALBUM_NAME = "UnknownAlbum"
 
@@ -89,29 +90,44 @@ def truncate_filename(filename, max_bytes=255, encoding=None):
 
 def expand_archive(path, out_dir):
     """Expands archives creating a temporary container directory and returns the path of that."""
-    match path.suffix.lower():
-        case ".zip":
-            container_dir = Path(tempfile.mkdtemp(dir=out_dir))
+    ext = path.suffix.lower()
+    container_dir = Path(tempfile.mkdtemp(dir=out_dir))
+    try:
+        if ext == ".zip":
             with zipfile.ZipFile(path) as archive:
                 archive.extractall(container_dir)
-        case ".rar":
-            container_dir = Path(tempfile.mkdtemp(dir=out_dir))
+        elif shutil.which("unar"):
             subprocess.run(
-                ["unrar", "x", path, container_dir],
+                ["unar", "-o", container_dir, path],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=True
             )
-        case ".7z":
-            container_dir = Path(tempfile.mkdtemp(dir=out_dir))
-            subprocess.run(
-                ["7za", "x", f"-o{container_dir}", path],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=True
-            )
-        case _:
-            raise TypeError(f"Unknown archive format '{path.suffix}'")
+        elif ext == ".rar":
+            if shutil.which("unrar"):
+                subprocess.run(
+                    ["unrar", "x", path, container_dir],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True
+                )
+            else:
+                raise TypeError("Can't extract RAR. Need unar or unrar.")
+        elif ext == ".7z":
+            if shutil.which("7za"):
+                subprocess.run(
+                    ["7za", "x", f"-o{container_dir}", path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True
+                )
+            else:
+                raise TypeError("Can't extract 7Z. Need unar or 7za.")
+        else:
+            raise TypeError(f"Don't know how to extract '{path}'")
+    except Exception:
+        container_dir.rmdir()
+        raise
     return container_dir
 
 def expand_archives_in_tree(paths, tmp_dir, parent=Path()):
