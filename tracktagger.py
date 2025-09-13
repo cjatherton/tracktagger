@@ -467,6 +467,8 @@ def main(argv=None):
     """Main routine."""
     trackinfo_path, out_dir, replaygain_flag = parse_cli(argv[1:] if argv is not None else None)
 
+    print("DISCLAIMER: Support the musicians you admire by purchasing their music!")
+
     with tempfile.TemporaryDirectory(prefix="tracktagger-") as work_dir:
         work_path = Path(work_dir)
         print(f"Resolving inputs from trackinfo file: '{trackinfo_path}' ...")
