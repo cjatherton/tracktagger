@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 #
 
-"""Read specially formatted 'trackinfo' files and apply contained tag information."""
+"""Read specially formatted 'TRACKINFO' files and apply contained tag information."""
 
 import argparse
 import math
