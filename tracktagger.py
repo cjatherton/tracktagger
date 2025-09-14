@@ -34,7 +34,7 @@ import sys
 import tempfile
 import zipfile
 
-ARCHIVE_EXTS = (".zip", ".rar", ".7z", ".tar")
+ARCHIVE_EXTS = (".zip", ".rar", ".7z", ".gz", ".gzip", ".bz2", ".tar", ".xz", ".lzma", ".ace")
 
 UNKNOWN_ALBUM_NAME = "UnknownAlbum"
 
