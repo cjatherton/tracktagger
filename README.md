@@ -125,9 +125,9 @@ tracktagger.py "Random Access Memories.tracks"
 ```
 ...assuming "Random Access Memories.tracks" is the name of your *TRACKINFO* file. By default, the output is put in a newly created directory with the album name in the current directory. The location of this output directory can be changed with the `-o, --output-dir` option. ReplayGain tags can be automatically added with `-g, --add-replaygain`. The filenames of the output have a certain format that cannot be changed at the moment. They will look like *04. Daft Punk - Within.flac*, or in the multidisc case, *2.07. Yo-Yo Ma - Prélude.flac*.
 
-*tracktagger.py* will autodetect the corresponding track file to the track number in the input directory by looking at the first number appearing in the filename of each file and taking the first matching. Thus, "track03.cdda.flac" will match to track number 3.
+*tracktagger.py* will autodetect the corresponding track file to the track number in the input directory by looking at the first number appearing in the filename of each file and taking the first matching. Thus, "track03.cdda.wav" will match to track number 3.
 
-*tracktagger.py* can only run on FLAC files currently. WAV files (or any other kind) will first have to be converted to FLAC first.
+*tracktagger.py* can convert audio files in either FLAC or WAV format.
 
 ## Archives
 *tracktagger.py* has the ability to extract music from within archives on-the-fly. (It can even look inside archives within archives.) Currently, it can extract from .zip (natively), .rar (with `unar` or `unrar`), .7z (with `unar` or `7za`) and anything `unar` supports (if installed). Refer to the archive just as you would any other input.

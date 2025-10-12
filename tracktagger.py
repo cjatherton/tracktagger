@@ -56,7 +56,7 @@ TRACKINFO_STANDARD_KEYS = (
     "COVER"
 )
 
-TRACK_INPUT_RE = re.compile(r".*?([0-9]+).*\.flac", re.I)
+TRACK_INPUT_RE = re.compile(r".*?([0-9]+).*\.(flac|wav)", re.I)
 
 def truncate_filename(filename, max_bytes=255, encoding=None):
     """Truncate filenames if they're too big for the filesystem."""
@@ -383,21 +383,33 @@ def process_one(args):
             disc_padding, track_padding)}"
         f" → {out_path.name}"
     )
-    with subprocess.Popen(
-                ["flac", "--decode", "--stdout", in_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL
-            ) as dec_proc:
-        tag_args = []
-        for field, value in sorted(tags.items()):
-            if field == 'COVER':
-                tag_args.append(f"--picture={cover_map[value]}")
-            elif field != 'INPUT' and value is not None:
-                tag_args.append(f"--tag={field}={value}")
+    encode_cmd = ["flac", "--best", f"--output-name={out_path}"]
+    for field, value in sorted(tags.items()):
+        if field == 'COVER':
+            encode_cmd.append(f"--picture={cover_map[value]}")
+        elif field != 'INPUT' and value is not None:
+            encode_cmd.append(f"--tag={field}={value}")
+    if in_path.suffix.lower() == ".flac":
+        with subprocess.Popen(
+                    ["flac", "--decode", "--stdout", in_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL
+                ) as dec_proc:
+            try:
+                subprocess.run(
+                    encode_cmd + ["-"],
+                    stdin=dec_proc.stdout,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True
+                )
+            except subprocess.CalledProcessError:
+                print(f"ERROR: Problem creating output '{out_path}'!", file=sys.stderr)
+                return None
+    else:
         try:
             subprocess.run(
-                ["flac", "--best"] + tag_args + [f"--output-name={out_path}", "-"],
-                stdin=dec_proc.stdout,
+                encode_cmd + [in_path],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=True
@@ -405,7 +417,7 @@ def process_one(args):
         except subprocess.CalledProcessError:
             print(f"ERROR: Problem creating output '{out_path}'!", file=sys.stderr)
             return None
-        return out_path
+    return out_path
 
 def process(info, out_dir, track_map, cover_map, disc_padding, track_padding):
     """Perform compression."""
