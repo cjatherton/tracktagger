@@ -462,14 +462,11 @@ def add_replaygain(albums):
 def parse_cli(args=None):
     """Parse command line and get input trackinfo and output directory."""
     parser = argparse.ArgumentParser(description="apply tags to FLAC files")
-    parser.add_argument("trackinfo", type=Path, metavar="TRACKINFO",
-        help="trackinfo file containing new tags")
-    parser.add_argument("-o", "--output-dir", default=Path.cwd(), type=Path,
-        help="location to place result")
-    parser.add_argument("-g", "--add-replaygain", action="store_true",
-        help="add ReplayGain tag information to output")
+    parser.add_argument("trackinfo", type=Path, metavar="TRACKINFO", help="trackinfo file containing new tags")
+    parser.add_argument("-o", "--output-dir", default=Path.cwd(), type=Path, help="location to place result")
+    parser.add_argument("-r", "--no-replaygain", action='store_false', help="do not add ReplayGain tag information to output")
     cli = parser.parse_args(args)
-    return (cli.trackinfo.resolve(), cli.output_dir.resolve(), cli.add_replaygain)
+    return (cli.trackinfo.resolve(), cli.output_dir.resolve(), cli.no_replaygain)
 
 def run(args=None):
     """Run routine."""
