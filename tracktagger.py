@@ -58,6 +58,9 @@ TRACKINFO_STANDARD_KEYS = (
 
 TRACK_INPUT_RE = re.compile(r".*?([0-9]+).*\.(flac|wav)", re.I)
 
+class SubprocessError(Exception):
+    """Errors that occur in subprocesses."""
+
 def truncate_filename(filename, max_bytes=255, encoding=None):
     """Truncate filenames if they're too big for the filesystem."""
     if encoding is None:
@@ -301,8 +304,8 @@ def map_tracks(info):
                         ret[album][disc][num] = f.name
                         break
                 else:
-                    raise FileNotFoundError("Could not find file for track "
-                        f"{track_id_to_string(album, disc, num)}"
+                    raise FileNotFoundError(
+                        f"Could not find file for track {track_id_to_string(album, disc, num)}"
                     )
     return ret
 
@@ -352,8 +355,8 @@ def map_covers(info, tmp_dir):
                     stderr=subprocess.DEVNULL,
                     check=True
                 )
-            except subprocess.CalledProcessError:
-                print(f"ERROR: Could not extract cover art from '{flac_cover}'!", file=sys.stderr)
+            except subprocess.CalledProcessError as e:
+                raise SubprocessError(f"Could not extract cover art from '{flac_cover}'") from e
             ret[flac_cover] = Path(cover_file.name)
     return ret
 
@@ -379,8 +382,9 @@ def process_one(args):
     """Process a file."""
     in_path, out_dir, tags, cover_map, disc_padding, track_padding = args
     out_path = gen_output_path(tags, out_dir, disc_padding, track_padding)
-    print(f"{track_id_to_string(tags['ALBUM'], tags['DISCNUMBER'], tags['TRACKNUMBER'],
-            disc_padding, track_padding)}"
+    print(
+        f"{track_id_to_string(tags['ALBUM'],
+            tags['DISCNUMBER'], tags['TRACKNUMBER'], disc_padding, track_padding)}"
         f" → {out_path.name}"
     )
     encode_cmd = ["flac", "--best", f"--output-name={out_path}"]
@@ -403,9 +407,8 @@ def process_one(args):
                     stderr=subprocess.DEVNULL,
                     check=True
                 )
-            except subprocess.CalledProcessError:
-                print(f"ERROR: Problem creating output '{out_path}'!", file=sys.stderr)
-                return None
+            except subprocess.CalledProcessError as e:
+                raise SubprocessError(f"Could not encode '{in_path}' to '{out_path}'") from e
     else:
         try:
             subprocess.run(
@@ -414,9 +417,8 @@ def process_one(args):
                 stderr=subprocess.DEVNULL,
                 check=True
             )
-        except subprocess.CalledProcessError:
-            print(f"ERROR: Problem creating output '{out_path}'!", file=sys.stderr)
-            return None
+        except subprocess.CalledProcessError as e:
+            raise SubprocessError(f"Could not encode '{in_path}' to '{out_path}'") from e
     return out_path
 
 def process(info, out_dir, track_map, cover_map, disc_padding, track_padding):
@@ -434,29 +436,23 @@ def process(info, out_dir, track_map, cover_map, disc_padding, track_padding):
                     )
             album_procs[album] = pool.map_async(process_one, album_args)
         for album, files in album_procs.items():
-            ret[album] = list(filter(None, files.get()))
+            ret[album] = files.get()
     return ret
 
 def add_replaygain_one(args):
     """Add ReplayGain tags to an album with paths."""
     album, paths = args
-    if album is not None:
-        album_str = f"\"{album}\""
-    else:
-        album_str = "unknown album"
-    if len(paths) > 0:
-        print(f"Adding ReplayGain tags to {album_str} ...")
-        try:
-            subprocess.run(
-                ["metaflac", "--add-replay-gain"] + paths,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=True
-            )
-        except subprocess.CalledProcessError:
-            print(f"ERROR: Problem adding ReplayGain tags to {album_str}!", file=sys.stderr)
-    else:
-        print(f"WARNING: No files in {album_str} to add ReplayGain tags to!")
+    album_str = f"\"{album}\"" if album else "unknown album"
+    print(f"Adding ReplayGain tags to {album_str} ...")
+    try:
+        subprocess.run(
+            ["metaflac", "--add-replay-gain"] + paths,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        raise SubprocessError(f"Could not add ReplayGain tags to {album_str}") from e
 
 def add_replaygain(albums):
     """Add ReplayGain tags to group of albums."""
@@ -475,9 +471,9 @@ def parse_cli(args=None):
     cli = parser.parse_args(args)
     return (cli.trackinfo.resolve(), cli.output_dir.resolve(), cli.add_replaygain)
 
-def main(argv=None):
-    """Main routine."""
-    trackinfo_path, out_dir, replaygain_flag = parse_cli(argv[1:] if argv is not None else None)
+def run(args=None):
+    """Run routine."""
+    trackinfo_path, out_dir, replaygain_flag = parse_cli(args)
 
     print("DISCLAIMER: Support the musicians you admire by purchasing their music!")
 
@@ -497,6 +493,16 @@ def main(argv=None):
         albums = process(info, out_dir, track_map, cover_map, disc_padding, track_padding)
         if replaygain_flag:
             add_replaygain(albums)
+
+def main(argv=None):
+    """Main routine (for processing errors)."""
+    try:
+        run(argv[1:] if argv is not None else None)
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        print("Exiting with failure ...")
+        return 1
+    return 0
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
